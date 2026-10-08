@@ -769,9 +769,11 @@ function drawItems(){
   document.getElementById('lbl-date').textContent=selD?'— '+fdDisp(selD):'';
   const sun=isSunday(selD);
   document.getElementById('notice2').innerHTML=sun
-    ?'<div class="notice notice-sun">🚗 주일에는 차량 예약만 가능합니다</div>'
+    ?'<div class="notice notice-sun">🚗 주일에는 차량과 만나홀만 예약 가능합니다 (만나홀은 관리자 승인 필요)</div>'
     :'<div class="notice notice-week">✅ 방 예약과 차량 예약 모두 가능합니다</div>';
-  const items=sun?CARS:ALL_ITEMS;
+  // 주일 예약 가능 항목: 차량 + 만나홀
+  const SUNDAY_ROOM_IDS=['mh'];
+  const items=sun?[...ROOMS.filter(r=>SUNDAY_ROOM_IDS.includes(r.id)),...CARS]:ALL_ITEMS;
   const grps={};items.forEach(r=>{if(!grps[r.grp])grps[r.grp]=[];grps[r.grp].push(r);});
   let h='';
   for(const[g,rs]of Object.entries(grps)){

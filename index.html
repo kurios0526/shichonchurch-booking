@@ -267,7 +267,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#f0f4f2;color:var(--gray9)
         <li>이레비전센터 승인 담당: <strong>지하층</strong> 사무처 · <strong>3·4층</strong> 교회학교 · <strong>5층</strong> 청년부 · <strong>9층</strong> 사무처</li>
         <li>이레비전센터 <strong>3·4층은 주중(월~금) 예약 불가</strong>입니다. 꼭 필요하시면 교회학교 담당자에게 먼저 문의해 주세요.</li>
         <li>이레비전센터 <strong>층 전체 대관</strong>은 그 층에 다른 예약이 없을 때만 가능합니다.</li>
-        <li>주일에는 <strong>아천홀(오후 3시 30분 이후)</strong>, <strong>만나홀</strong>, <strong>차량</strong>만 예약할 수 있습니다.</li>
+        <li><strong>주일 예약</strong>은 이 페이지에서 할 수 없습니다. 필요하시면 <strong>사무처</strong>에 요청해 주세요.</li>
         <li>사용 후에는 <strong>원래 상태로 정리정돈</strong> 부탁드립니다.</li>
         <li><strong>예약 시간을 지켜주세요.</strong> 다음 사용자에게 피해가 갈 수 있습니다.</li>
         <li>예약 후 <strong>사용하지 않을 경우 미리 취소</strong>해주세요.</li>
@@ -700,7 +700,8 @@ window.showWeekdayInfo=function(id){
   document.getElementById('weekday-modal').classList.add('show');
 }
 window.closeWeekdayInfo=function(){document.getElementById('weekday-modal').classList.remove('show');}
-function sunBlocked(){return curB==='sb'||curB==='vc';}
+// 주일 예약은 관리자 페이지(대신 예약하기)에서만 가능
+function sunBlocked(){return !isEmbedAdmin||curB==='sb'||curB==='vc';}
 
 function genTimes(){
   const t=[];
@@ -1007,8 +1008,8 @@ function buildCustomCalHtml(year, month){
     const dt=new Date(year,month,d),ds=fd(dt);
     const todMid=new Date(today.getFullYear(),today.getMonth(),today.getDate());
     const winEnd=new Date(today.getFullYear(),today.getMonth()+3,0);
-    const isPast=dt<todMid, beyond=!isEmbedAdmin && dt>winEnd;
     const isSun=dt.getDay()===0,isTod=ds===todStr;
+    const isPast=dt<todMid||(isSun&&!isEmbedAdmin), beyond=!isEmbedAdmin && dt>winEnd;
     const isCustom=customDates.includes(ds);
     const hol=isHoliday(ds);
     let cls='cday';
@@ -1186,6 +1187,7 @@ window.doBook=async function(){
     if(!endDate||!endTime){showToast('종료 날짜와 종료 시간을 선택해 주세요');return;}
     if(endDate < selD || (endDate===selD)){showToast('종료 날짜는 시작 날짜보다 뒤여야 합니다 (하루 예약은 여러 날 체크를 해제하세요)');return;}
     const segments = splitMultiDay(selD, selStart, endDate, endTime);
+    if(!isEmbedAdmin){ const ss=segments.find(sg=>isSunday(sg.date)); if(ss){showToast('여러 날 예약에 주일('+fdDisp(ss.date)+')이 포함되어 있습니다. 주일 예약은 사무처에 요청해 주세요');return;} }
     const wkSeg=segments.find(sg=>selItems.some(id=>weekdayBlocked(id,sg.date)));
     if(wkSeg){showToast(fdDisp(wkSeg.date)+'은 주중이라 3·4층을 예약할 수 없습니다. '+WEEKDAY_CONTACT+'에게 문의해 주세요');return;}
     // 각 분할 날짜에 대해 모든 선택 항목 충돌 체크
@@ -1231,6 +1233,7 @@ window.doBook=async function(){
   }
 
   const dates=getRepeatDates();
+  if(!isEmbedAdmin){ const sd=dates.find(d=>isSunday(d)); if(sd){showToast(fdDisp(sd)+'은 주일이라 예약할 수 없습니다. 사무처에 요청해 주세요');return;} }
   const wkDate=dates.find(d=>selItems.some(id=>weekdayBlocked(id,d)));
   if(wkDate){showToast(fdDisp(wkDate)+'은 주중이라 3·4층을 예약할 수 없습니다. '+WEEKDAY_CONTACT+'에게 문의해 주세요');return;}
   let conflict=false;
@@ -1701,6 +1704,11 @@ window.confirmEdit = async function(){
     return;
   }
   
+  // 주일로 옮기기는 전체 관리자만
+  if(pw!==ADMIN_PW && !isEmbedAdmin && isSunday(newDate) && newDate!==editBkData.date){
+    showToast('주일로는 옮길 수 없습니다. 사무처에 요청해 주세요');
+    return;
+  }
   // 3·4층 주중 변경은 관리자만
   if(!isAdmin && newItem.noWeekday && isWeekday(newDate)){
     showToast('3·4층은 주중으로 옮길 수 없습니다. '+WEEKDAY_CONTACT+'에게 문의해 주세요');
